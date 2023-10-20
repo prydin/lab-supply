@@ -1,0 +1,55 @@
+.title KiCad schematic
+.include "lm358-dual.mod"
+.include "tip121.mod"
+.include "transformer.mod"
+.model __D2 D
+.model __RV3 potentiometer( r=10k position=1 )
+.model __D5 D
+.model __Q2 NPN
+.model __D4 D
+.model __D6 D
+.model __D7 D
+.model __D8 D
+.model __D3 D
+.model __RV4 potentiometer( r=10k )
+.model __RV2 potentiometer( r=1k position=1 )
+.model __RV1 potentiometer( r=10k position=0.1 )
+.save all
+.probe alli
+XU2 Net-_D2-K_ Net-_D1-A_ Net-_U2A-+_ GND Net-_Q2-C_ Net-_U2B--_ Net-_C2-Pad2_ +36V LM358-DUAL
+R6 Net-_D1-A_ GND 0.5
+RLOAD1 Net-_D5-K_ Net-_D1-A_ 100
+R7 Net-_D5-K_ Net-_D1-A_ 3.9k
+C1 Net-_D5-K_ Net-_D1-A_ 100u
+XU1 Net-_U1A--_ Net-_U1A--_ Net-_U1A-+_ GND Net-_U1A--_ Net-_D2-K_ Net-_R8-Pad1_ +36V LM358-DUAL
+XQ1 +36V Net-_D2-A_ Net-_D5-K_ tip121
+D2 Net-_D2-A_ Net-_D2-K_ __D2
+V1 Net-_T1-AA_ GND DC 0 SIN( 0 115 60 0 0 0 1 ) AC 1
+R5 Net-_Q2-C_ Net-_R5-Pad2_ 47k
+R10 Net-_C2-Pad2_ Net-_D2-A_ 10k
+ARV3 Net-_U1A--_ Net-_R5-Pad2_ Net-_D1-A_ __RV3
+D5 Net-_D1-A_ Net-_D5-K_ __D5
+R4 Net-_U2B--_ Net-_D5-K_ 47k
+C2 Net-_U2B--_ Net-_C2-Pad2_ 10n
+R3 Net-_D1-A_ Net-_U2B--_ 10k
+Q2 Net-_Q2-C_ Net-_Q2-B_ GND __Q2
+R11 Net-_Q2-B_ Net-_D1-A_ 4.7k
+R9 GND Net-_Q2-B_ 4.7k
+C6 +36V GND 4700u
+C4 +36V GND 4700u
+C5 +36V GND 4700u
+D4 Net-_D4-A_ +36V __D4
+D6 GND Net-_D4-A_ __D6
+D7 GND Net-_D7-K_ __D7
+D8 Net-_D7-K_ +36V __D8
+C7 Net-_T1-AA_ GND 10p
+D3 GND Net-_D3-A_ __D3
+R8 Net-_R8-Pad1_ Net-_D3-A_ 1.5k
+XT1 Net-_T1-AA_ GND Net-_D7-K_ Net-_D4-A_ TRAFO
+ARV4 Net-_R2-Pad1_ Net-_RV2-Pad1_ unconnected-_RV4-Pad3_ __RV4
+R2 Net-_R2-Pad1_ Net-_U1A--_ 3.9k
+ARV2 Net-_RV2-Pad1_ Net-_U2A-+_ GND __RV2
+R1 +36V Net-_D1-K_ 10k
+ARV1 Net-_D1-K_ Net-_U1A-+_ Net-_D1-A_ __RV1
+VD1 Net-_D1-K_ Net-_D1-A_ DC 5.6
+.end
