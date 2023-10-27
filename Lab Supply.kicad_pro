@@ -172,7 +172,8 @@
         }
       ],
       "track_widths": [
-        0.0
+        0.0,
+        2.0
       ],
       "via_dimensions": [
         {
@@ -426,6 +427,23 @@
         "via_diameter": 0.8,
         "via_drill": 0.4,
         "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "High current",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgb(204, 102, 0)",
+        "track_width": 0.25,
+        "via_diameter": 0.8,
+        "via_drill": 0.4,
+        "wire_width": 12
       }
     ],
     "meta": {
@@ -433,7 +451,20 @@
     },
     "net_colors": null,
     "netclass_assignments": null,
-    "netclass_patterns": []
+    "netclass_patterns": [
+      {
+        "netclass": "High current",
+        "pattern": "+28V"
+      },
+      {
+        "netclass": "High current",
+        "pattern": "GND"
+      },
+      {
+        "netclass": "High current",
+        "pattern": "ISENSE"
+      }
+    ]
   },
   "pcbnew": {
     "last_paths": {
@@ -492,10 +523,6 @@
     [
       "f6cf3eae-48b8-48e0-9cfc-676f1a35373e",
       ""
-    ],
-    [
-      "e4bedb14-6ba1-45b2-a96d-bda9baa089d6",
-      "Controller"
     ]
   ],
   "text_variables": {}
