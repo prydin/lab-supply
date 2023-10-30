@@ -1,6 +1,11 @@
-#import <LiquidCrystal.h>
+#import <LiquidCrystal_I2C.h>
 #import <SPI.h>
+#import <MCP3202.h>
+#include <Print.h>
 #include <stdio.h>
+#define USE_TIMER_3 true
+#include <TimerInterrupt.h>
+#include <ISR_Timer.h>
 
 // Current dial pins
 #define ROTARY_DT_1   11
@@ -12,18 +17,18 @@
 #define ROTARY_CLK_2  5
 #define ROTARY_SW_2   9
 
+// Conversion factors
+#define ADC_TO_VOLT(x)  ((x / 4096) * 30)
+#define ADC_TO_AMP(x)   ((x / 4096) * 2)
+
 // ADC/DAC pins
-#define DAC_CS        13 // High -> ACC, Low -> DAC
-#define LDAC          1
+#define DAC_CS        13    // DAC chip select
+#define ADC_CS        23    // ADC chip select
 
-#define LCD_RS        12
-#define LCD_RW        11
-#define LCD_E         10
-#define LCD_DB0       9
-#define LCD_DB1       7
-#define LCD_DB2       5
-#define LCD_DB3       23
-
+// Timer interrupt
+#define ADC_AVG_INT     1000   // ADC averaging interval (ms)
+#define ADC_SAMPLE_INT  10    // ADC sampling interval (ms)
+#define MAX_SAMPLES     (ADC_AVG_INT / ADC_SAMPLE_INT)
 class RotaryEncoder {
   public:
     RotaryEncoder(int8_t phase1, int8_t phase2, int8_t sw, int16_t min, int16_t max, int16_t fine, int16_t coarse, bool reversed = false) : 
@@ -110,70 +115,123 @@ class RotaryEncoder {
 
 RotaryEncoder currentDial(ROTARY_DT_1, ROTARY_CLK_1, ROTARY_SW_1, 0, 200, 1, 10);
 RotaryEncoder voltageDial(ROTARY_DT_2, ROTARY_CLK_2, ROTARY_SW_2, 0, 3000, 1, 50);
-//LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_E, LCD_DB0, LCD_DB1, LCD_DB2, LCD_DB3);
+MCP3202 adc(ADC_CS);
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+volatile float currSum = 0.0;
+volatile float voltSum = 0.0;
+volatile float currAvg = 0.0;
+volatile float voltAvg = 0.0;
+volatile bool refreshReadings = false;
+int nSamples = 0;
+float v_set = 0.0;
+float i_set = 0.0;
 
 
 void setup() {
   pinMode(DAC_CS, OUTPUT);  
-  pinMode(LDAC, OUTPUT);
+  pinMode(ADC_CS, OUTPUT);
   digitalWrite(DAC_CS, HIGH);
-  digitalWrite(LDAC, HIGH);
+  digitalWrite(ADC_CS, HIGH);
   Serial.begin(9600);
   SPI.begin();
+
+  // Start timer interrupt
+  ITimer3.init();
+  ITimer3.attachInterruptInterval(ADC_SAMPLE_INT, onReadADC);
 
   // Set all DAC output voltages to zero
   setDACVoltage(0, 0);
   setDACVoltage(1, 0);
 
-  /*lcd.begin(16, 2);
-  lcd.clear();
-  lcd.cursor();
-  lcd.print("Hellow world!");  */
+lcd.init();
+lcd.backlight();
+lcd.clear();
+displayStatic();
 }
 
 void setDACVoltage(int channel, int v) {
   uint16_t command = (channel & 1) << 15 | 0x7000 | v;
-  Serial.print("Command: " );
-  Serial.print(command);
-  Serial.print(" channel: ");
-  Serial.println((channel & 1) << 15);
-  digitalWrite(DAC_CS, LOW); // Select the DAC
   SPI.beginTransaction(SPISettings(14000000, MSBFIRST, SPI_MODE0));
  
   digitalWrite(15, LOW);
 
+  digitalWrite(DAC_CS, LOW); 
   SPI.transfer(command >> 8);
   SPI.transfer(command & 0xff);
   SPI.endTransaction();
   delayMicroseconds(1); // Give things some time to settle
-  digitalWrite(DAC_CS, HIGH); // Make sure no one accidentally sends commands to the DAC
-  digitalWrite(LDAC, LOW); // Send LDAC pulse to activate output
-  delayMicroseconds(2);
-  digitalWrite(LDAC, HIGH); // Load the DAC latch to output the selected voltage
+  digitalWrite(DAC_CS, HIGH); 
+}
+
+void printReading(int x, int y, float r, char unit) {
+  lcd.setCursor(x, y);
+  char buffer[10];
+  if(r > 99.0 | r < 0) {
+    lcd.print("--.--");
+  } else {
+    if(r < 10.0) {
+      lcd.print(" ");
+    }
+    dtostrf(r, 2, 2, buffer);
+    lcd.print(buffer);
+  }
+  lcd.print(unit);
+}
+
+
+void displayStatic() {
+  //    Set     Actual
+    //    --------------
+    // V   0.01V   0.00V
+    // I   1.23A.  1.11A
+    lcd.setCursor(0, 0);
+    lcd.print("    Set     Actual");
+    lcd.setCursor(0, 1);
+    lcd.print("    --------------");
+    lcd.setCursor(0, 2);
+    lcd.print("V  --.--V   --.--V");
+    lcd.setCursor(0, 3);
+    lcd.print("I  --.--A   --.--A");
 }
 
 void loop() {
+  // Read rotary encoders
   currentDial.service();
   voltageDial.service();
-  // Serial.println(voltageDial.get_count());
+
   if (currentDial.get_change() || voltageDial.get_change()) {
-    float v_set = (float) voltageDial.get_count() / 100.0;
-    float i_set = (float) currentDial.get_count() / 100.0;
+    v_set = (float) voltageDial.get_count() / 100.0;
+    i_set = (float) currentDial.get_count() / 100.0;
 
     // Set voltage
-    Serial.println((v_set / 30.0) * 4096.0);
     setDACVoltage(0, round((v_set / 30.0) * 4096.0));
 
     // Set current
     setDACVoltage(1, round((i_set / 2.0) * 4096.0));
 
-    char buffer[50];
-   
-    char vbuf[6];
-    char ibuf[6];
-    dtostrf(v_set, 2, 2, vbuf);
-    dtostrf(i_set, 2, 2, ibuf);
-    sprintf(buffer, "V=%s I=%s", vbuf, ibuf);
-    Serial.println(buffer);
+    // Update display
+    printReading(3, 2, v_set, 'V');
+    printReading(3, 3, i_set, 'A');
+    Serial.println(voltSum);
+  } 
+  if(refreshReadings) {
+     printReading(12, 2, ADC_TO_VOLT(voltAvg), 'V');
+     printReading(12, 3, ADC_TO_AMP(currAvg), 'A');
+     refreshReadings = false;
   }
 }
+
+void onReadADC() {
+  voltSum += adc.readChannel(0);
+  currSum += adc.readChannel(1);
+  nSamples++;
+  if(nSamples > MAX_SAMPLES) {
+    voltAvg = voltSum / (float) nSamples;
+    currSum  = voltSum / (float) nSamples;
+    voltSum = 0;
+    currSum = 0;
+    nSamples = 0;
+    refreshReadings = true;
+  }
+}
+
