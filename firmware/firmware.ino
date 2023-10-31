@@ -18,17 +18,19 @@
 #define ROTARY_SW_2   9
 
 // Conversion factors
-#define ADC_TO_VOLT(x)  ((x / 4096) * 30)
-#define ADC_TO_AMP(x)   ((x / 4096) * 2)
+#define ADC_TO_VOLT(x)  (x / 1000)
+#define ADC_TO_AMP(x)   ((x / 4096.0) * 2.0)
 
 // ADC/DAC pins
 #define DAC_CS        13    // DAC chip select
 #define ADC_CS        23    // ADC chip select
 
 // Timer interrupt
-#define ADC_AVG_INT     1000   // ADC averaging interval (ms)
-#define ADC_SAMPLE_INT  10    // ADC sampling interval (ms)
+#define ADC_AVG_INT     1000    // ADC averaging interval (ms)
+#define ADC_SAMPLE_INT  100     // ADC sampling interval (ms)
 #define MAX_SAMPLES     (ADC_AVG_INT / ADC_SAMPLE_INT)
+#define POLL_ROTARY_INT 10      // Rotary switch polling interval (ms)
+
 class RotaryEncoder {
   public:
     RotaryEncoder(int8_t phase1, int8_t phase2, int8_t sw, int16_t min, int16_t max, int16_t fine, int16_t coarse, bool reversed = false) : 
@@ -121,7 +123,7 @@ volatile float currSum = 0.0;
 volatile float voltSum = 0.0;
 volatile float currAvg = 0.0;
 volatile float voltAvg = 0.0;
-volatile bool refreshReadings = false;
+volatile bool refreshReadings = true;
 int nSamples = 0;
 float v_set = 0.0;
 float i_set = 0.0;
@@ -138,6 +140,7 @@ void setup() {
   // Start timer interrupt
   ITimer3.init();
   ITimer3.attachInterruptInterval(ADC_SAMPLE_INT, onReadADC);
+  //ITimer3.attachInterruptInterval(POLL_ROTARY_INT, onPollRotary);
 
   // Set all DAC output voltages to zero
   setDACVoltage(0, 0);
@@ -150,7 +153,7 @@ displayStatic();
 }
 
 void setDACVoltage(int channel, int v) {
-  uint16_t command = (channel & 1) << 15 | 0x7000 | v;
+  uint16_t command = (channel & 1) << 15 | 0x7000 | (v > 4095 ? 4095 : v);
   SPI.beginTransaction(SPISettings(14000000, MSBFIRST, SPI_MODE0));
  
   digitalWrite(15, LOW);
@@ -185,20 +188,20 @@ void displayStatic() {
     // V   0.01V   0.00V
     // I   1.23A.  1.11A
     lcd.setCursor(0, 0);
-    lcd.print("    Set     Actual");
+    lcd.print("      Set   Actual");
     lcd.setCursor(0, 1);
-    lcd.print("    --------------");
-    lcd.setCursor(0, 2);
     lcd.print("V  --.--V   --.--V");
-    lcd.setCursor(0, 3);
+    lcd.setCursor(0, 2);
     lcd.print("I  --.--A   --.--A");
+    lcd.setCursor(0, 3);
+    lcd.print("P  --.--W   --.--W");
 }
 
 void loop() {
   // Read rotary encoders
   currentDial.service();
   voltageDial.service();
-
+ 
   if (currentDial.get_change() || voltageDial.get_change()) {
     v_set = (float) voltageDial.get_count() / 100.0;
     i_set = (float) currentDial.get_count() / 100.0;
@@ -210,13 +213,15 @@ void loop() {
     setDACVoltage(1, round((i_set / 2.0) * 4096.0));
 
     // Update display
-    printReading(3, 2, v_set, 'V');
-    printReading(3, 3, i_set, 'A');
-    Serial.println(voltSum);
+    printReading(3, 1, v_set, 'V');
+    printReading(3, 2, i_set, 'A');
+    printReading(3, 3, i_set * v_set, 'W');
   } 
   if(refreshReadings) {
-     printReading(12, 2, ADC_TO_VOLT(voltAvg), 'V');
-     printReading(12, 3, ADC_TO_AMP(currAvg), 'A');
+      Serial.println(voltAvg);
+     printReading(12, 1, ADC_TO_VOLT(voltAvg), 'V');
+     printReading(12, 2, ADC_TO_AMP(currAvg), 'A');
+     printReading(12, 3, ADC_TO_AMP(currAvg) * ADC_TO_VOLT(voltAvg), 'W');
      refreshReadings = false;
   }
 }
@@ -233,5 +238,10 @@ void onReadADC() {
     nSamples = 0;
     refreshReadings = true;
   }
+}
+
+void onPollRotary() {
+  currentDial.service();
+  voltageDial.service();
 }
 
