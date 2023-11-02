@@ -4,6 +4,7 @@
 #define USE_TIMER_3 true
 #include <TimerInterrupt.h>
 #include <ISR_Timer.h>
+#include <MCP_DAC.h>
 
 // Current dial pins
 #define ROTARY_DT_1 11
@@ -24,6 +25,10 @@
 #define ADC_CURRENT MCP3202::Channel::SINGLE_0
 #define ADC_VOLTAGE MCP3202::Channel::SINGLE_1
 
+// DAC constants
+#define DAC_VOLTAGE 1
+#define DAC_CURRENT 0
+
 // Timer interrupt
 #define ADC_AVG_INT 1000   // ADC averaging interval (ms)
 #define ADC_SAMPLE_INT 100 // ADC sampling interval (ms)
@@ -33,6 +38,7 @@
 // Conversion factors
 #define MAX_VOLT 30.0
 #define MAX_AMP 2.0
+#define R_SENSE 0.5
 #define ADC_TO_VOLT(x) (x / 4.096) * MAX_VOLT
 #define ADC_TO_AMP(x) (x / 4.096) * MAX_AMP
 
@@ -133,9 +139,15 @@ private:
   int16_t m_min = 0;
 };
 
+// Rotary encoders
 RotaryEncoder currentDial(ROTARY_DT_1, ROTARY_CLK_1, ROTARY_SW_1, 0, 200, 1, 10);
 RotaryEncoder voltageDial(ROTARY_DT_2, ROTARY_CLK_2, ROTARY_SW_2, 0, 3000, 1, 50);
+
+// ADC
 MCP3202 adc(ADC_VREF, ADC_CS);
+
+// DAC
+MCP4922 dac;
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 volatile float currSum = 0.0;
@@ -146,21 +158,6 @@ volatile bool refreshReadings = true;
 int nSamples = 0;
 float v_set = 0.0;
 float i_set = 0.0;
-
-void setDACVoltage(int channel, int v)
-{
-  uint16_t command = (channel & 1) << 15 | 0x7000 | (v > 4095 ? 4095 : v);
-  SPI.beginTransaction(SPISettings(14000000, MSBFIRST, SPI_MODE0));
-
-  digitalWrite(15, LOW);
-
-  digitalWrite(DAC_CS, LOW);
-  SPI.transfer(command >> 8);
-  SPI.transfer(command & 0xff);
-  SPI.endTransaction();
-  delayMicroseconds(1); // Give things some time to settle
-  digitalWrite(DAC_CS, HIGH);
-}
 
 void printReading(int x, int y, float r, char unit)
 {
@@ -236,8 +233,9 @@ void setup()
   // ITimer3.attachInterruptInterval(POLL_ROTARY_INT, onPollRotary);
 
   // Set all DAC output voltages to zero
-  setDACVoltage(0, 0);
-  setDACVoltage(1, 0);
+  dac.begin(DAC_CS);
+  dac.analogWrite(0, DAC_CURRENT);
+  dac.analogWrite(0, DAC_VOLTAGE);
 
   lcd.init();
   lcd.backlight();
@@ -257,10 +255,10 @@ void loop()
     i_set = (float)currentDial.get_count() / 100.0;
 
     // Set voltage
-    setDACVoltage(0, round((v_set / 30.0) * 4096.0));
+    dac.analogWrite(round((v_set / MAX_VOLT) * (float)dac.maxValue()), DAC_VOLTAGE);
 
     // Set current
-    setDACVoltage(1, round((i_set / 2.0) * 4096.0));
+    dac.analogWrite(round((i_set / MAX_AMP * R_SENSE) * (float)dac.maxValue()), DAC_CURRENT);
 
     // Update display
     printReading(3, 1, v_set, 'V');

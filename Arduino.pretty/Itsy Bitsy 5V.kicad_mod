@@ -47,7 +47,7 @@
   (pad "32" thru_hole circle (at 7.62 -12.7) (size 1.524 1.524) (drill 0.762) (layers "*.Cu" "*.Mask") (tstamp 5697e421-d40c-4c8b-8a8e-c84e06be6332))
   (pad "33" thru_hole circle (at 7.62 -15.24) (size 1.524 1.524) (drill 0.762) (layers "*.Cu" "*.Mask") (tstamp eea9494d-6268-47b4-aec4-4153a7e11050))
   (model "${KIPRJMOD}/ItsyBitsym0Express_headers.STEP"
-    (offset (xyz 0 0 0))
+    (offset (xyz 0 0 3.5))
     (scale (xyz 1 1 1))
     (rotate (xyz -90 0 -90))
   )
