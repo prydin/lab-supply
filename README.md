@@ -1,6 +1,6 @@
 # Linear 0-30V, 2A lab power supply
 
-![3d rendering](assets/3dmodel.png) { width: 200px }
+![3d rendering](assets/3dmodel.png) 
 
 ## Disclaimer
 
