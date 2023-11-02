@@ -1,6 +1,6 @@
 # Linear 0-30V, 2A lab power supply
 
-![3d rendering](assets/3dmodel.png) 
+![3d rendering](assets/3dmodel.png)
 
 ## Disclaimer
 
@@ -60,11 +60,5 @@ The output voltage of the supply is measured by an MCP3202 ADC through a voltage
 voltage down to 0-4.096V. Further overvoltage protection is offered by the `D12` clamping diode. Current is
 measured in a similar way, but since that signal is in the 0-1V range, it is first amplified 4.096x by `U1B`.
 This signal is also clamped to the 4.096V reference through `D10`.
-
-<style>
-img {
-  background-color: #FFFFFF;
-}
-</style>
 
 ![schematic](assets/schematic.svg)
