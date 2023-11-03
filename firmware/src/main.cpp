@@ -84,8 +84,8 @@ volatile float voltSum = 0.0;
 volatile float currAvg = 0.0;
 volatile float voltAvg = 0.0;
 int nSamples = 0;
-float v_set = 0.0;
-float i_set = 0.0;
+float vSet = 0.0;
+float iSet = 0.0;
 
 void onReadADC()
 {
@@ -138,20 +138,20 @@ void loop()
 
   if (currentDial.getChange() || voltageDial.getChange())
   {
-    v_set = (float)voltageDial.getCount() / 100.0;
-    i_set = (float)currentDial.getCount() / 100.0;
+    vSet = (float)voltageDial.getCount() / 100.0;
+    iSet = (float)currentDial.getCount() / 100.0;
 
     // Set voltage
-    dac.analogWrite(round((v_set / MAX_VOLT) * (float)dac.maxValue()), DAC_VOLTAGE);
+    dac.analogWrite(round((vSet / MAX_VOLT) * (float)dac.maxValue()), DAC_VOLTAGE);
 
     // Set current
-    dac.analogWrite(round((i_set / MAX_AMP * R_SENSE) * (float)dac.maxValue()), DAC_CURRENT);
+    dac.analogWrite(round((iSet / MAX_AMP * R_SENSE) * (float)dac.maxValue()), DAC_CURRENT);
   }
 
   // Update display (onlh updates changed values)
-  display.setVSet(v_set);
-  display.setISet(i_set);
-  display.setPSet(i_set * v_set);
+  display.setVSet(vSet);
+  display.setISet(iSet);
+  display.setPSet(iSet * vSet);
   display.setIAct(currAvg);
   display.setVAct(voltAvg);
   display.setPAct(currAvg * voltAvg);
