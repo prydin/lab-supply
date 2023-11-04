@@ -28,6 +28,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <MCP_DAC.h>
 #include "RotaryEncoder.hpp"
 #include "Display.hpp"
+#include "FanControl.hpp"
+#include "Average.hpp"
 
 // Current dial pins
 #define ROTARY_DT_1 11
@@ -66,6 +68,19 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define ADC_TO_VOLT(x) (ADC_TO_RAW_VOLT(x) * (MAX_VOLT / ADC_VREF)) // Convert ADC reading to volts on supply output
 #define ADC_TO_AMP(x) (ADC_TO_RAW_VOLT(x) * (MAX_AMP / ADC_VREF))   // Convert ADC reading to amps through load
 
+// Fan control constants
+#define FAN_PWM_PIN 13         // TODO: Change when running on board
+#define THERM_PIN A0           // Thermistor sense pin
+#define R_THERM_GROUND 10000.0 // Voltage divider resistance to ground
+#define FAN_ON 30.0            // Temp where fan is turned on
+#define FAN_MAX 85.0           // Temp where fan is maxed out
+
+// Steinhart-Hart coefficients for Vishay NTCALUG03A103GC
+#define THERM_R25 10000.0
+#define THERM_COEFF_A 1.145241779e-3
+#define THERM_COEFF_B 2.314660102e-4
+#define THERM_COEFF_C 0.9841582652e-7
+
 // Rotary encoders
 RotaryEncoder currentDial(ROTARY_DT_1, ROTARY_CLK_1, ROTARY_SW_1, 0, 200, 1, 10);
 RotaryEncoder voltageDial(ROTARY_DT_2, ROTARY_CLK_2, ROTARY_SW_2, 0, 3000, 1, 50);
@@ -79,29 +94,31 @@ MCP4922 dac;
 // Display
 Display display;
 
-volatile float currSum = 0.0;
-volatile float voltSum = 0.0;
-volatile float currAvg = 0.0;
-volatile float voltAvg = 0.0;
-int nSamples = 0;
+// Fan
+FanControl fan(FAN_PWM_PIN, FAN_ON, FAN_MAX);
+
+// Averaged readings
+Average measVolt(MAX_SAMPLES);
+Average measAmp(MAX_SAMPLES);
+Average measTemp(MAX_SAMPLES);
+
 float vSet = 0.0;
 float iSet = 0.0;
+
+float getTemp()
+{
+  int v = analogRead(THERM_PIN);
+  float r2 = (R_THERM_GROUND * (1023.0 / (float)v - 1.0));
+  float logR2 = log(r2);
+  return (1.0 / (THERM_COEFF_A + THERM_COEFF_B * logR2 + THERM_COEFF_C * logR2 * logR2 * logR2)) - 273.15;
+}
 
 void onReadADC()
 {
   SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
-  voltSum += ADC_TO_VOLT(adc.readChannel(ADC_VOLTAGE));
-  currSum += ADC_TO_AMP(adc.readChannel(ADC_CURRENT));
-  SPI.endTransaction();
-  nSamples++;
-  if (nSamples > MAX_SAMPLES)
-  {
-    voltAvg = voltSum / (float)nSamples;
-    currAvg = currSum / (float)nSamples;
-    voltSum = 0;
-    currSum = 0;
-    nSamples = 0;
-  }
+  measVolt.update(ADC_TO_VOLT(adc.readChannel(ADC_VOLTAGE)));
+  measAmp.update(ADC_TO_AMP(adc.readChannel(ADC_CURRENT)));
+  measTemp.update(getTemp());
 }
 
 void onPollRotary()
@@ -127,15 +144,16 @@ void setup()
   dac.begin(DAC_CS);
   dac.analogWrite(0, DAC_CURRENT);
   dac.analogWrite(0, DAC_VOLTAGE);
-
   display.init();
 }
 
 void loop()
 {
+  // Read the dials
   currentDial.service();
   voltageDial.service();
 
+  // Dials moved?
   if (currentDial.getChange() || voltageDial.getChange())
   {
     vSet = (float)voltageDial.getCount() / 100.0;
@@ -149,11 +167,18 @@ void loop()
   }
 
   // Update display (onlh updates changed values)
+  float temp = measTemp.getAvg();
   display.setVSet(vSet);
   display.setISet(iSet);
-  display.setPSet(iSet * vSet);
-  display.setIAct(currAvg);
-  display.setVAct(voltAvg);
-  display.setPAct(currAvg * voltAvg);
+  display.setTemp(round(temp));
+  float amp = measAmp.getAvg(), volt = measVolt.getAvg();
+  display.setIAct(amp);
+  display.setVAct(volt);
+  display.setPAct(amp * volt);
   display.refresh();
+
+  Serial.println(getTemp());
+
+  // Set fan speed relative to current
+  fan.setTemp(temp);
 }

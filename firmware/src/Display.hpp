@@ -28,14 +28,14 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define IACT_CHANGED 2
 #define VSET_CHANGED 4
 #define VACT_CHANGED 8
-#define PSET_CHANGED 16
+#define TEMP_CHANGED 16
 #define PACT_CHANGED 32
 
 class Display
 {
     LiquidCrystal_I2C lcd;
     uint16_t changed = 0xffff; // Update everything on init
-    float vSet = 0.0, vAct = 0.0, iSet = 0.0, iAct = 0.0, pSet = 0.0, pAct = 0.0;
+    float vSet = 0.0, vAct = 0.0, iSet = 0.0, iAct = 0.0, temp = 0.0, pAct = 0.0;
 
 public:
     Display() : lcd(0x27, 20, 4)
@@ -49,20 +49,18 @@ public:
         lcd.clear();
 
         /// Draw an initial display like this:
-        //
-        //    Set     Actual
-        //    --------------
-        // V   0.01V   0.00V
-        // I   1.23A   1.11A
-        // P   0.01W   0.00W
+        // V= 0.01V ->  0.00V
+        // I= 1.23A ->  1.11A
+        // T= 23.0°C    P=55.5W
+        // FAN=1234RPM
         lcd.setCursor(0, 0);
-        lcd.print("      Set   Actual");
+        lcd.print("V =--.--V ->  --.--V");
         lcd.setCursor(0, 1);
-        lcd.print("V  --.--V   --.--V");
+        lcd.print("I= --.--A ->  --.--A");
         lcd.setCursor(0, 2);
-        lcd.print("I  --.--A   --.--A");
+        lcd.print("T=-----\xdf\x43  P= --.--W");
         lcd.setCursor(0, 3);
-        lcd.print("P  --.--W   --.--W");
+        lcd.print("FAN=----RPM");
     }
 
     void setISet(float v)
@@ -105,15 +103,15 @@ public:
         changed |= VACT_CHANGED;
     }
 
-    void setPSet(float v)
+    void setTemp(float v)
     {
-        if (v == pSet)
+        if (v == temp)
         {
             return;
         }
 
-        pSet = v;
-        changed |= PSET_CHANGED;
+        temp = v;
+        changed |= TEMP_CHANGED;
     }
 
     void setPAct(float v)
@@ -130,28 +128,28 @@ public:
     {
         if (changed & VSET_CHANGED)
         {
-            printReading(3, 1, vSet);
+            printReading(3, 0, vSet);
         }
         if (changed & VACT_CHANGED)
         {
-            printReading(12, 1, vAct);
+            printReading(14, 0, vAct);
         }
 
         if (changed & ISET_CHANGED)
         {
-            printReading(3, 2, iSet);
+            printReading(3, 1, iSet);
         }
         if (changed & IACT_CHANGED)
         {
-            printReading(12, 2, iAct);
+            printReading(14, 1, iAct);
         }
-        if (changed & PSET_CHANGED)
+        if (changed & TEMP_CHANGED)
         {
-            printReading(3, 3, pSet);
+            printTemp(3, 2, temp);
         }
         if (changed & PACT_CHANGED)
         {
-            printReading(12, 3, pAct);
+            printReading(14, 2, pAct);
         }
         changed = 0;
     }
@@ -167,12 +165,16 @@ private:
         }
         else
         {
-            if (r < 10.0)
-            {
-                lcd.print(" ");
-            }
-            dtostrf(r, 2, 2, buffer);
+            dtostrf(r, 5, 2, buffer);
             lcd.print(buffer);
         }
+    }
+
+    void printTemp(int x, int y, float r)
+    {
+        lcd.setCursor(x, y);
+        char buffer[10];
+        dtostrf(r, 5, 0, buffer);
+        lcd.print(buffer);
     }
 };
