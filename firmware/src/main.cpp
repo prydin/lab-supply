@@ -28,7 +28,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <MCP_DAC.h>
 #include "RotaryEncoder.hpp"
 #include "Display.hpp"
-#include "FanControl.hpp"
+#include "TempControl.hpp"
 #include "Average.hpp"
 
 // Current dial pins
@@ -70,6 +70,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 // Fan control constants
 #define FAN_PWM_PIN 13         // TODO: Change when running on board
+#define FAN_SENSOR_PIN 0       // Fan tacho pin
 #define THERM_PIN A0           // Thermistor sense pin
 #define R_THERM_GROUND 10000.0 // Voltage divider resistance to ground
 #define FAN_ON 30.0            // Temp where fan is turned on
@@ -95,7 +96,7 @@ MCP4922 dac;
 Display display;
 
 // Fan
-FanControl fan(FAN_PWM_PIN, FAN_ON, FAN_MAX);
+TempControl tempControl(FAN_PWM_PIN, FAN_SENSOR_PIN, FAN_ON, FAN_MAX);
 
 // Averaged readings
 Average measVolt(MAX_SAMPLES);
@@ -131,6 +132,7 @@ void setup()
 {
   pinMode(DAC_CS, OUTPUT);
   pinMode(ADC_CS, OUTPUT);
+  pinMode(FAN_SENSOR_PIN, INPUT_PULLUP);
   digitalWrite(DAC_CS, HIGH);
   digitalWrite(ADC_CS, HIGH);
   Serial.begin(9600);
@@ -145,6 +147,9 @@ void setup()
   dac.analogWrite(0, DAC_CURRENT);
   dac.analogWrite(0, DAC_VOLTAGE);
   display.init();
+
+  // Initialize cooling system
+  tempControl.begin();
 }
 
 void loop()
@@ -175,10 +180,9 @@ void loop()
   display.setIAct(amp);
   display.setVAct(volt);
   display.setPAct(amp * volt);
+  display.setRpm(tempControl.getSpeed());
   display.refresh();
 
-  Serial.println(getTemp());
-
   // Set fan speed relative to current
-  fan.setTemp(temp);
+  tempControl.setTemp(temp);
 }

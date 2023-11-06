@@ -30,12 +30,14 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define VACT_CHANGED 8
 #define TEMP_CHANGED 16
 #define PACT_CHANGED 32
+#define RPM_CHANGED 64
 
 class Display
 {
     LiquidCrystal_I2C lcd;
     uint16_t changed = 0xffff; // Update everything on init
     float vSet = 0.0, vAct = 0.0, iSet = 0.0, iAct = 0.0, temp = 0.0, pAct = 0.0;
+    uint16_t rpm = 0;
 
 public:
     Display() : lcd(0x27, 20, 4)
@@ -54,13 +56,13 @@ public:
         // T= 23.0°C    P=55.5W
         // FAN=1234RPM
         lcd.setCursor(0, 0);
-        lcd.print("V =--.--V ->  --.--V");
+        lcd.print("V= --.--V ->  --.--V");
         lcd.setCursor(0, 1);
         lcd.print("I= --.--A ->  --.--A");
         lcd.setCursor(0, 2);
-        lcd.print("T=-----\xdf\x43  P= --.--W");
+        lcd.print("T= ----\xdf\x43  P= --.--W");
         lcd.setCursor(0, 3);
-        lcd.print("FAN=----RPM");
+        lcd.print("FAN  ---RPM");
     }
 
     void setISet(float v)
@@ -124,6 +126,16 @@ public:
         changed |= PACT_CHANGED;
     }
 
+    void setRpm(int v)
+    {
+        if (v == rpm)
+        {
+            return;
+        }
+        rpm = v;
+        changed |= RPM_CHANGED;
+    }
+
     void refresh()
     {
         if (changed & VSET_CHANGED)
@@ -145,11 +157,15 @@ public:
         }
         if (changed & TEMP_CHANGED)
         {
-            printTemp(3, 2, temp);
+            printInt(3, 2, round(temp), 5);
         }
         if (changed & PACT_CHANGED)
         {
             printReading(14, 2, pAct);
+        }
+        if (changed & RPM_CHANGED)
+        {
+            printInt(4, 3, rpm, 4);
         }
         changed = 0;
     }
@@ -170,11 +186,11 @@ private:
         }
     }
 
-    void printTemp(int x, int y, float r)
+    void printInt(int x, int y, int r, int size)
     {
         lcd.setCursor(x, y);
-        char buffer[10];
-        dtostrf(r, 5, 0, buffer);
+        char buffer[size + 1];
+        dtostrf(r, size, 0, buffer);
         lcd.print(buffer);
     }
 };
