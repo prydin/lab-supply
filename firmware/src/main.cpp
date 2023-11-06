@@ -180,7 +180,7 @@ void loop()
   display.setIAct(amp);
   display.setVAct(volt);
   display.setPAct(amp * volt);
-  display.setRpm(tempControl.getSpeed());
+  display.setRpm(tempControl.getCachedSpeed());
   display.refresh();
 
   // Set fan speed relative to current
