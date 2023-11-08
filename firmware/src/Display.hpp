@@ -48,19 +48,41 @@ public:
     {
         lcd.init();
         lcd.backlight();
-        lcd.clear();
+        normal();
+    }
 
+    void normal()
+    {
+        lcd.clear();
         /// Draw an initial display like this:
         // V= 0.01V ->  0.00V
         // I= 1.23A ->  1.11A
         // T= 23.0°C    P=55.5W
         // FAN=1234RPM
         lcd.setCursor(0, 0);
-        lcd.print("V= --.--V ->  --.--V");
+        lcd.print("V=  0.00V ->   0.00V");
         lcd.setCursor(0, 1);
-        lcd.print("I= --.--A ->  --.--A");
+        lcd.print("I=  0.00A ->   0.00A");
         lcd.setCursor(0, 2);
         lcd.print("T= ----\xdf\x43  P= --.--W");
+        lcd.setCursor(0, 3);
+        lcd.print("FAN  ---RPM");
+    }
+
+    void overtemp()
+    {
+        lcd.clear();
+        /// Draw an initial display like this:
+        // *** OVERTEMP! ***
+        // Allow to cool off!
+        // T= 23.0°C    P=55.5W
+        // FAN=1234RPM
+        lcd.setCursor(0, 0);
+        lcd.print("*** OVERTEMP! ***");
+        lcd.setCursor(0, 1);
+        lcd.print("Allow to cool off!");
+        lcd.setCursor(0, 2);
+        lcd.print("T= ----\xdf\x43");
         lcd.setCursor(0, 3);
         lcd.print("FAN  ---RPM");
     }

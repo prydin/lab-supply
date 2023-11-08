@@ -82,6 +82,10 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define THERM_COEFF_B 2.314660102e-4
 #define THERM_COEFF_C 0.9841582652e-7
 
+// Overtemp protection
+#define OVERTEMP_LIMIT_ON 90  // Overtemp protection turns on
+#define OVERTEMP_LIMIT_OFF 80 // Overtemp protection turns off
+
 // Rotary encoders
 RotaryEncoder currentDial(ROTARY_DT_1, ROTARY_CLK_1, ROTARY_SW_1, 0, 200, 1, 10);
 RotaryEncoder voltageDial(ROTARY_DT_2, ROTARY_CLK_2, ROTARY_SW_2, 0, 3000, 1, 50);
@@ -103,8 +107,12 @@ Average measVolt(MAX_SAMPLES);
 Average measAmp(MAX_SAMPLES);
 Average measTemp(MAX_SAMPLES);
 
+// Voltage and current set on dials
 float vSet = 0.0;
 float iSet = 0.0;
+
+// Overtemp protection
+bool overTemp = false;
 
 float getTemp()
 {
@@ -154,32 +162,53 @@ void setup()
 
 void loop()
 {
-  // Read the dials
-  currentDial.service();
-  voltageDial.service();
-
-  // Dials moved?
-  if (currentDial.getChange() || voltageDial.getChange())
+  // Overtemp? Disble all dials and keep voltage and current at 0.
+  if (!overTemp)
   {
-    vSet = (float)voltageDial.getCount() / 100.0;
-    iSet = (float)currentDial.getCount() / 100.0;
+    // Read the dials
+    currentDial.service();
+    voltageDial.service();
 
-    // Set voltage
-    dac.analogWrite(round((vSet / MAX_VOLT) * (float)dac.maxValue()), DAC_VOLTAGE);
+    // Dials moved?
+    if (currentDial.getChange() || voltageDial.getChange())
+    {
+      vSet = (float)voltageDial.getCount() / 100.0;
+      iSet = (float)currentDial.getCount() / 100.0;
 
-    // Set current
-    dac.analogWrite(round((iSet / MAX_AMP * R_SENSE) * (float)dac.maxValue()), DAC_CURRENT);
+      // Set voltage
+      dac.analogWrite(round((vSet / MAX_VOLT) * (float)dac.maxValue()), DAC_VOLTAGE);
+
+      // Set current
+      dac.analogWrite(round((iSet / MAX_AMP * R_SENSE) * (float)dac.maxValue()), DAC_CURRENT);
+    }
   }
 
-  // Update display (onlh updates changed values)
+  // Handle overtemp if needed
   float temp = measTemp.getAvg();
+  if (!overTemp && temp > OVERTEMP_LIMIT_ON)
+  {
+    overTemp = true;
+    vSet = 0.0;
+    iSet = 0.0;
+    display.overtemp();
+  }
+  if (overTemp && temp < OVERTEMP_LIMIT_OFF)
+  {
+    overTemp = false;
+    display.normal();
+  }
+
+  // Update display (only updates changed values)
   display.setVSet(vSet);
   display.setISet(iSet);
   display.setTemp(round(temp));
-  float amp = measAmp.getAvg(), volt = measVolt.getAvg();
-  display.setIAct(amp);
-  display.setVAct(volt);
-  display.setPAct(amp * volt);
+  if (!overTemp)
+  {
+    float amp = measAmp.getAvg(), volt = measVolt.getAvg();
+    display.setIAct(amp);
+    display.setVAct(volt);
+    display.setPAct(amp * volt);
+  }
   display.setRpm(tempControl.getCachedSpeed());
   display.refresh();
 
