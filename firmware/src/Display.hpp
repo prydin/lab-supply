@@ -38,6 +38,7 @@ class Display
     uint16_t changed = 0xffff; // Update everything on init
     float vSet = 0.0, vAct = 0.0, iSet = 0.0, iAct = 0.0, temp = 0.0, pAct = 0.0;
     uint16_t rpm = 0;
+    char convBuf[100];
 
 public:
     Display() : lcd(0x27, 20, 4)
@@ -196,23 +197,21 @@ private:
     void printReading(int x, int y, float r)
     {
         lcd.setCursor(x, y);
-        char buffer[10];
         if (r > 99.0 || r < 0)
         {
             lcd.print("--.--");
         }
         else
         {
-            dtostrf(r, 5, 2, buffer);
-            lcd.print(buffer);
+            dtostrf(r, 5, 2, convBuf);
+            lcd.print(convBuf);
         }
     }
 
     void printInt(int x, int y, int r, int size)
     {
         lcd.setCursor(x, y);
-        char buffer[size + 1];
-        dtostrf(r, size, 0, buffer);
-        lcd.print(buffer);
+        dtostrf(r, size, 0, convBuf);
+        lcd.print(convBuf);
     }
 };

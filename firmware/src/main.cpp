@@ -32,8 +32,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include "Average.hpp"
 
 // Current dial pins
-#define ROTARY_DT_1 11
-#define ROTARY_CLK_1 12
+#define ROTARY_DT_1 12
+#define ROTARY_CLK_1 11
 #define ROTARY_SW_1 10
 
 // Voltage dial pins
@@ -69,9 +69,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define ADC_TO_AMP(x) (ADC_TO_RAW_VOLT(x) * (MAX_AMP / ADC_VREF))   // Convert ADC reading to amps through load
 
 // Fan control constants
-#define FAN_PWM_PIN 13         // TODO: Change when running on board
+#define FAN_PWM_PIN 6          // Fan PWM control pin
 #define FAN_SENSOR_PIN 0       // Fan tacho pin
-#define THERM_PIN A0           // Thermistor sense pin
+#define THERM_PIN A2           // Thermistor sense pin
 #define R_THERM_GROUND 10000.0 // Voltage divider resistance to ground
 #define FAN_ON 30.0            // Temp where fan is turned on
 #define FAN_MAX 85.0           // Temp where fan is maxed out
@@ -141,6 +141,7 @@ void setup()
   pinMode(DAC_CS, OUTPUT);
   pinMode(ADC_CS, OUTPUT);
   pinMode(FAN_SENSOR_PIN, INPUT_PULLUP);
+  pinMode(FAN_PWM_PIN, OUTPUT);
   digitalWrite(DAC_CS, HIGH);
   digitalWrite(ADC_CS, HIGH);
   Serial.begin(9600);
@@ -179,7 +180,7 @@ void loop()
       dac.analogWrite(round((vSet / MAX_VOLT) * (float)dac.maxValue()), DAC_VOLTAGE);
 
       // Set current
-      dac.analogWrite(round((iSet / MAX_AMP * R_SENSE) * (float)dac.maxValue()), DAC_CURRENT);
+      dac.analogWrite(round((iSet / MAX_AMP) * (float)dac.maxValue()), DAC_CURRENT);
     }
   }
 
@@ -206,12 +207,15 @@ void loop()
   {
     float amp = measAmp.getAvg(), volt = measVolt.getAvg();
     display.setIAct(amp);
-    display.setVAct(volt);
-    display.setPAct(amp * volt);
+
+    // We measure in relation to negative supply. Adjust for drop across sense resistor
+    float vAdj = volt - amp * R_SENSE;
+    display.setVAct(vAdj);
+    display.setPAct(amp * vAdj);
   }
   display.setRpm(tempControl.getCachedSpeed());
   display.refresh();
 
-  // Set fan speed relative to current
+  // Set fan speed
   tempControl.setTemp(temp);
 }
