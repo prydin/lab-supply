@@ -38,7 +38,7 @@ class Display
     uint16_t changed = 0xffff; // Update everything on init
     float vSet = 0.0, vAct = 0.0, iSet = 0.0, iAct = 0.0, temp = 0.0, pAct = 0.0;
     uint16_t rpm = 0;
-    char convBuf[100];
+    char convBuf[100]; // Buffer used during number to string conversions
 
 public:
     Display() : lcd(0x27, 20, 4)
