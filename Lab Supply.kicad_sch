@@ -5416,7 +5416,7 @@
     (property "Value" "10k" (at 33.02 297.18 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
-    (property "Footprint" "Potentiometer_THT:Potentiometer_Bourns_3339H_Vertical" (at 35.56 295.91 0)
+    (property "Footprint" "Potentiometer_THT:TRIM_3362P-1-253LF" (at 35.56 295.91 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at 35.56 295.91 0)
@@ -5558,7 +5558,7 @@
     (property "Value" "10k" (at 92.075 135.89 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
-    (property "Footprint" "Potentiometer_THT:Potentiometer_Bourns_3339H_Vertical" (at 94.615 134.62 0)
+    (property "Footprint" "Potentiometer_THT:TRIM_3362P-1-253LF" (at 94.615 134.62 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at 94.615 134.62 0)
@@ -5597,7 +5597,7 @@
     (property "Value" "20k" (at 17.78 251.46 90)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "Potentiometer_THT:Potentiometer_Bourns_3339H_Vertical" (at 17.78 255.27 0)
+    (property "Footprint" "Potentiometer_THT:TRIM_3362P-1-253LF" (at 17.78 255.27 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at 17.78 255.27 0)
@@ -6540,7 +6540,7 @@
     )
   )
 
-  (symbol (lib_id "Amplifier_Operational:LM324") (at 151.765 91.44 0) (unit 3)
+  (symbol (lib_id "Amplifier_Operational:LM324") (at 151.765 91.44 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid aab5d8e5-14ac-4fdd-8f52-fd96445aba7f)
     (property "Reference" "U1" (at 151.765 81.28 0)
@@ -6584,7 +6584,7 @@
     (instances
       (project "Lab Supply"
         (path "/f6cf3eae-48b8-48e0-9cfc-676f1a35373e"
-          (reference "U1") (unit 3)
+          (reference "U1") (unit 1)
         )
       )
     )
@@ -7888,7 +7888,7 @@
     (property "Value" "10k" (at 189.865 125.73 90)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "Potentiometer_THT:Potentiometer_Bourns_3339H_Vertical" (at 189.865 129.54 0)
+    (property "Footprint" "Potentiometer_THT:TRIM_3362P-1-253LF" (at 189.865 129.54 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at 189.865 129.54 0)
