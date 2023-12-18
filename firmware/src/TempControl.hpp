@@ -55,7 +55,6 @@ public:
 
     void setTemp(float t)
     {
-        Serial.println(t);
         // Check for unreiable temp readings
         // TODO: Also check this against current readings. E.g. running at 20C @ 2A wouldn't be realistic.
         if (t < 5)
