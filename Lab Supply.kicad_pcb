@@ -8594,7 +8594,7 @@
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp 39e0346e-cb94-4098-86ad-e5202e633caa))
     (fp_line (start 8.89 2.88) (end 8.89 -2.92)
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp 93880abe-0b55-4d43-9187-16e90fc703e7))
-    (pad "1" thru_hole roundrect (at 0 0) (size 1.74 2.19) (drill 1.19) (layers "*.Cu" "*.Mask") (roundrect_rratio 0.143678)
+    (pad "1" thru_hole roundrect (at 0 0) (size 1.74 2.19) (drill 1.19) (layers "*.Cu" "*.Mask") (roundrect_rratio 0.1436781609)
       (net 22 "V-") (pinfunction "-") (pintype "passive") (tstamp 72175bde-10aa-4882-9901-27525d3d08be))
     (pad "2" thru_hole oval (at 2.54 0) (size 1.74 2.19) (drill 1.19) (layers "*.Cu" "*.Mask")
       (net 26 "+12V") (pinfunction "+") (pintype "passive") (tstamp 0a128a53-4e68-42a3-b692-7352ed31e687))

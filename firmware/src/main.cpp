@@ -26,15 +26,16 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <TimerInterrupt.h>
 #include <ISR_Timer.h>
 #include <MCP_DAC.h>
-#include "RotaryEncoder.hpp"
+#include <RotaryEncoder.h>
 #include "Display.hpp"
 #include "TempControl.hpp"
 #include "Average.hpp"
+#include "ControlKnob.hpp"
 
 // Current dial pins
-#define ROTARY_DT_1 12
-#define ROTARY_CLK_1 11
-#define ROTARY_SW_1 10
+#define ROTARY_DT_1 11
+#define ROTARY_CLK_1 10
+#define ROTARY_SW_1 12
 
 // Voltage dial pins
 #define ROTARY_DT_2 7
@@ -46,10 +47,10 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define ADC_CS 23 // ADC chip select
 
 // ADC constants
-#define ADC_VREF 4.096       // ADC reference voltage
-#define ADC_MAX_VALUE 4096.0 // Maximum value returned from ADC (2^bits)
-#define ADC_CURRENT 0        // Curremt channel
-#define ADC_VOLTAGE 1        // Voltage channel
+#define ADC_VREF 4096      // ADC reference voltage in millivolts
+#define ADC_MAX_VALUE 4096 // Maximum value returned from ADC (2^bits)
+#define ADC_CURRENT 0      // Curremt channel
+#define ADC_VOLTAGE 1      // Voltage channel
 
 // DAC constants
 #define DAC_VOLTAGE 1 // Voltage channel
@@ -60,13 +61,17 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define ADC_SAMPLE_INT 100                         // ADC sampling interval (ms)
 #define MAX_SAMPLES (ADC_AVG_INT / ADC_SAMPLE_INT) // Number of samples to collect
 
-// Conversion factors and functions
-#define MAX_VOLT 30.0                                               // Maximum volts the supply can output
-#define MAX_AMP 2.0                                                 // Maximum amps the supply can output
-#define R_SENSE 0.5                                                 // Value of sense resistor (ohms)
-#define ADC_TO_RAW_VOLT(x) ((x * ADC_VREF) / ADC_MAX_VALUE)         // Convert ADC reading to actual volts seen on pin
-#define ADC_TO_VOLT(x) (ADC_TO_RAW_VOLT(x) * (MAX_VOLT / ADC_VREF)) // Convert ADC reading to volts on supply output
-#define ADC_TO_AMP(x) (ADC_TO_RAW_VOLT(x) * (MAX_AMP / ADC_VREF))   // Convert ADC reading to amps through load
+// Conversion factors and functions (all values in millivolts and milliamps)
+#define MAX_MV 30000                                              // Maximum millivolts the supply can output
+#define MAX_MA 2000                                               // Maximum milliamps the supply can output
+#define R_SENSE 0.5                                               // Value of sense resistor (ohms)
+#define ADC_TO_RAW_VOLT(x) ((x * ADC_VREF) / ADC_MAX_VALUE)       // Convert ADC reading to actual volts seen on pin
+#define ADC_TO_VOLT(x) (ADC_TO_RAW_VOLT(x) * (MAX_MV / ADC_VREF)) // Convert ADC reading to volts on supply output
+#define ADC_TO_AMP(x) (ADC_TO_RAW_VOLT(x) * (MAX_MA / ADC_VREF))  // Convert ADC reading to amps through load
+
+// Rotary encoder constants
+#define MV_PER_CLICK 10
+#define MA_PER_CLICK 10
 
 // Fan control constants
 #define FAN_PWM_PIN 6          // Fan PWM control pin
@@ -86,18 +91,20 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define OVERTEMP_LIMIT_ON 90  // Overtemp protection turns on
 #define OVERTEMP_LIMIT_OFF 80 // Overtemp protection turns off
 
+// Display
+Display display;
+
 // Rotary encoders
-RotaryEncoder currentDial(ROTARY_DT_1, ROTARY_CLK_1, ROTARY_SW_1, 0, 200, 1, 10);
-RotaryEncoder voltageDial(ROTARY_DT_2, ROTARY_CLK_2, ROTARY_SW_2, 0, 3000, 1, 50);
+RotaryEncoder currentEncoder(ROTARY_DT_1, ROTARY_CLK_1, RotaryEncoder::LatchMode::TWO03);
+RotaryEncoder voltageEncoder(ROTARY_DT_2, ROTARY_CLK_2, RotaryEncoder::LatchMode::TWO03);
+ControlKnob currentDial(currentEncoder, display, Display::ID::current, 0, MAX_MA, 10, 100, ROTARY_SW_1);
+ControlKnob voltageDial(voltageEncoder, display, Display::ID::voltage, 0, MAX_MV, 10, 1000, ROTARY_SW_2);
 
 // ADC
 MCP3202 adc(ADC_CS);
 
 // DAC
 MCP4922 dac;
-
-// Display
-Display display;
 
 // Fan
 TempControl tempControl(FAN_PWM_PIN, FAN_SENSOR_PIN, FAN_ON, FAN_MAX);
@@ -107,9 +114,9 @@ Average measVolt(MAX_SAMPLES);
 Average measAmp(MAX_SAMPLES);
 Average measTemp(MAX_SAMPLES);
 
-// Voltage and current set on dials
-float vSet = 0.0;
-float iSet = 0.0;
+// Voltage and current set on dials (millivolts and milliamps)
+uint32_t vSet = 0.0;
+uint32_t iSet = 0.0;
 
 // Overtemp protection
 bool overTemp = false;
@@ -130,12 +137,6 @@ void onReadADC()
   measTemp.update(getTemp());
 }
 
-void onPollRotary()
-{
-  currentDial.service();
-  voltageDial.service();
-}
-
 void setup()
 {
   pinMode(DAC_CS, OUTPUT);
@@ -144,8 +145,12 @@ void setup()
   pinMode(FAN_PWM_PIN, OUTPUT);
   digitalWrite(DAC_CS, HIGH);
   digitalWrite(ADC_CS, HIGH);
-  Serial.begin(9600);
+  Serial.begin(115200);
   SPI.begin();
+
+  // Connect current and voltage dial so coarse mode behaves nicely
+  currentDial.setPeer(&voltageDial);
+  voltageDial.setPeer(&currentDial);
 
   // Start timer interrupt
   ITimer3.init();
@@ -167,20 +172,21 @@ void loop()
   if (!overTemp)
   {
     // Read the dials
-    currentDial.service();
-    voltageDial.service();
+    currentDial.tick();
+    voltageDial.tick();
+
+    int32_t i = currentDial.getValue();
+    int32_t v = voltageDial.getValue();
 
     // Dials moved?
-    if (currentDial.getChange() || voltageDial.getChange())
+    if (i != iSet || v != vSet)
     {
-      vSet = (float)voltageDial.getCount() / 100.0;
-      iSet = (float)currentDial.getCount() / 100.0;
+      vSet = v;
+      iSet = i;
 
       // Set voltage
-      dac.analogWrite(round((vSet / MAX_VOLT) * (float)dac.maxValue()), DAC_VOLTAGE);
-
-      // Set current
-      dac.analogWrite(round((iSet / MAX_AMP) * (float)dac.maxValue()), DAC_CURRENT);
+      dac.analogWrite(((uint32_t)dac.maxValue() * vSet) / MAX_MV, DAC_VOLTAGE);
+      dac.analogWrite(((uint32_t)dac.maxValue() * iSet) / MAX_MA, DAC_CURRENT);
     }
   }
 
@@ -209,9 +215,8 @@ void loop()
     display.setIAct(amp);
 
     // We measure in relation to negative supply. Adjust for drop across sense resistor
-    float vAdj = volt - amp * R_SENSE;
-    display.setVAct(vAdj);
-    display.setPAct(amp * vAdj);
+    display.setVAct(volt);
+    display.setPAct(amp * volt);
   }
   display.setRpm(tempControl.getCachedSpeed());
   display.refresh();
