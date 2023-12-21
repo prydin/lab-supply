@@ -16,6 +16,8 @@ riddled with RF noise.
 
 ## Principle of operation
 
+NOTE: This describes an earlier version and will be updated soon!
+
 ### Analog secion
 
 32-36V AC enters the circuit at the `AC1` and `AC2` terminals and gets rectified and smoothed into approximately
