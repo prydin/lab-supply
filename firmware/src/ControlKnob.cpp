@@ -14,6 +14,7 @@ void ControlKnob::tick()
             {
                 if (peer)
                 {
+                    currentValue = (currentValue / 1000) * 1000; // Round to nearest int
                     // Only one knob can be in fast mode at a time
                     peer->fast = false;
                 }
@@ -45,10 +46,4 @@ void ControlKnob::tick()
     {
         currentValue = newValue;
     }
-
-    Serial.print(pos);
-    Serial.print(" ");
-    Serial.print(increment);
-    Serial.print(" ");
-    Serial.println(currentValue);
 }

@@ -7,6 +7,7 @@ Display::Display() : lcd(0x27, 20, 4)
 void Display::init()
 {
     lcd.init();
+    lcd.createChar(0, lockChar);
     lcd.backlight();
     normal();
 }
