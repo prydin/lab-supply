@@ -66,7 +66,7 @@ public:
             setSpeed(255);
             return;
         }
-        float speed = t > onTemp ? min(t * slope, 255.0) : 0;
+        float speed = t > onTemp ? min((t - onTemp) * slope, 255.0) : 0;
         setSpeed(speed);
     }
 

@@ -79,7 +79,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define THERM_PIN A0           // Thermistor sense pin
 #define R_THERM_GROUND 10000.0 // Voltage divider resistance to ground
 #define FAN_ON 30.0            // Temp where fan is turned on
-#define FAN_MAX 85.0           // Temp where fan is maxed out
+#define FAN_MAX 35.0           // Temp where fan is maxed out
 
 // Steinhart-Hart coefficients for Vishay NTCALUG03A103GC
 #define THERM_R25 10000.0
@@ -185,8 +185,8 @@ void loop()
       iSet = i;
 
       // Set voltage
-      dac.analogWrite(((uint32_t)dac.maxValue() * toCalibrateVOutput(vSet)) / MAX_MV, DAC_VOLTAGE);
-      dac.analogWrite(((uint32_t)dac.maxValue() * iSet) / MAX_MA, DAC_CURRENT);
+      dac.analogWrite(((uint32_t)dac.maxValue() * toCalibratedVOutput(vSet)) / MAX_MV, DAC_VOLTAGE);
+      dac.analogWrite(((uint32_t)dac.maxValue() * toCalibratedIOutput(iSet)) / MAX_MA, DAC_CURRENT);
     }
   }
 
@@ -215,9 +215,11 @@ void loop()
     display.setIAct(amp);
 
     // We measure in relation to negative supply. Adjust for drop across sense resistor
-    display.setVAct(volt);
-    display.setIAct(amp);
-    display.setPAct(amp * volt);
+    float calAmp = toCalibratedIReading(amp);
+    float calVolt = toCalibratedVReading(volt);
+    display.setVAct(calVolt);
+    display.setIAct(calAmp);
+    display.setPAct((calAmp * calVolt) / 1000);
   }
   display.setRpm(tempControl.getCachedSpeed());
   display.refresh();
