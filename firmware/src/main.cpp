@@ -31,14 +31,15 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include "TempControl.hpp"
 #include "Average.hpp"
 #include "ControlKnob.hpp"
+#include "Calibration.hpp"
 
-// Current dial pins
+// Voltage dial pins
 #define ROTARY_DT_1 11
 #define ROTARY_CLK_1 10
 #define ROTARY_SW_1 12
 
-// Voltage dial pins
-#define ROTARY_DT_2 7
+// Current dial pins
+#define ROTARY_DT_2 22 // Fix for broken D7 on my Arduino.
 #define ROTARY_CLK_2 5
 #define ROTARY_SW_2 9
 
@@ -62,21 +63,20 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define MAX_SAMPLES (ADC_AVG_INT / ADC_SAMPLE_INT) // Number of samples to collect
 
 // Conversion factors and functions (all values in millivolts and milliamps)
-#define MAX_MV 30000                                              // Maximum millivolts the supply can output
-#define MAX_MA 2000                                               // Maximum milliamps the supply can output
-#define R_SENSE 0.5                                               // Value of sense resistor (ohms)
-#define ADC_TO_RAW_VOLT(x) ((x * ADC_VREF) / ADC_MAX_VALUE)       // Convert ADC reading to actual volts seen on pin
-#define ADC_TO_VOLT(x) (ADC_TO_RAW_VOLT(x) * (MAX_MV / ADC_VREF)) // Convert ADC reading to volts on supply output
-#define ADC_TO_AMP(x) (ADC_TO_RAW_VOLT(x) * (MAX_MA / ADC_VREF))  // Convert ADC reading to amps through load
+#define MAX_MV 30000                                                  // Maximum millivolts the supply can output
+#define MAX_MA 2000                                                   // Maximum milliamps the supply can output
+#define ADC_TO_RAW_VOLT(x) ((x * ADC_VREF) / ADC_MAX_VALUE)           // Convert ADC reading to actual volts seen on pin
+#define ADC_TO_VOLT(x) (ADC_TO_RAW_VOLT(x) * (MAX_MV / ADC_VREF))     // Convert ADC reading to volts on supply output
+#define ADC_TO_AMP(x) (MAX_MA * (ADC_TO_RAW_VOLT(x) / ADC_MAX_VALUE)) // Convert ADC reading to amps through load
 
 // Rotary encoder constants
 #define MV_PER_CLICK 10
 #define MA_PER_CLICK 10
 
 // Fan control constants
-#define FAN_PWM_PIN 6          // Fan PWM control pin
+#define FAN_PWM_PIN 8          // Fan PWM control pin
 #define FAN_SENSOR_PIN 0       // Fan tacho pin
-#define THERM_PIN A2           // Thermistor sense pin
+#define THERM_PIN A0           // Thermistor sense pin
 #define R_THERM_GROUND 10000.0 // Voltage divider resistance to ground
 #define FAN_ON 30.0            // Temp where fan is turned on
 #define FAN_MAX 85.0           // Temp where fan is maxed out
@@ -95,10 +95,10 @@ OTHER DEALINGS IN THE SOFTWARE.
 Display display;
 
 // Rotary encoders
-RotaryEncoder currentEncoder(ROTARY_DT_1, ROTARY_CLK_1, RotaryEncoder::LatchMode::TWO03);
-RotaryEncoder voltageEncoder(ROTARY_DT_2, ROTARY_CLK_2, RotaryEncoder::LatchMode::TWO03);
-ControlKnob currentDial(currentEncoder, display, Display::ID::current, 0, MAX_MA, 10, 100, ROTARY_SW_1);
-ControlKnob voltageDial(voltageEncoder, display, Display::ID::voltage, 0, MAX_MV, 10, 1000, ROTARY_SW_2);
+RotaryEncoder currentEncoder(ROTARY_DT_2, ROTARY_CLK_2, RotaryEncoder::LatchMode::TWO03);
+RotaryEncoder voltageEncoder(ROTARY_DT_1, ROTARY_CLK_1, RotaryEncoder::LatchMode::TWO03);
+ControlKnob currentDial(currentEncoder, display, Display::ID::current, 0, MAX_MA, 10, 100, ROTARY_SW_2);
+ControlKnob voltageDial(voltageEncoder, display, Display::ID::voltage, 0, MAX_MV, 10, 1000, ROTARY_SW_1);
 
 // ADC
 MCP3202 adc(ADC_CS);
@@ -132,8 +132,8 @@ float getTemp()
 void onReadADC()
 {
   SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
-  measVolt.update(ADC_TO_VOLT(adc.readChannel(ADC_VOLTAGE)));
-  measAmp.update(ADC_TO_AMP(adc.readChannel(ADC_CURRENT)));
+  measVolt.update(ADC_TO_VOLT((float)adc.readChannel(ADC_VOLTAGE)));
+  measAmp.update(ADC_TO_AMP((float)adc.readChannel(ADC_CURRENT)));
   measTemp.update(getTemp());
 }
 
@@ -185,7 +185,7 @@ void loop()
       iSet = i;
 
       // Set voltage
-      dac.analogWrite(((uint32_t)dac.maxValue() * vSet) / MAX_MV, DAC_VOLTAGE);
+      dac.analogWrite(((uint32_t)dac.maxValue() * toCalibrateVOutput(vSet)) / MAX_MV, DAC_VOLTAGE);
       dac.analogWrite(((uint32_t)dac.maxValue() * iSet) / MAX_MA, DAC_CURRENT);
     }
   }
@@ -216,6 +216,7 @@ void loop()
 
     // We measure in relation to negative supply. Adjust for drop across sense resistor
     display.setVAct(volt);
+    display.setIAct(amp);
     display.setPAct(amp * volt);
   }
   display.setRpm(tempControl.getCachedSpeed());
