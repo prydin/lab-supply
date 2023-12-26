@@ -4,8 +4,8 @@
 
 ## Disclaimer
 
-This is work in progress and does most likely not work. Also, I am a hobbyist doing this to learn. You are
-welcome to follow along, but don't expect anything to work (yet) and always exercise caution when dealing
+This supply has been built ant tested and does work. However, I am a hobbyist doing this to learn. You are
+welcome to follow along, but keep the experimental status in mind and always exercise caution when dealing
 with electricity!
 
 ## Abstract
