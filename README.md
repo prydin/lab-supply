@@ -4,7 +4,7 @@
 
 ## Disclaimer
 
-This supply has been built ant tested and does work. However, I am a hobbyist doing this to learn. You are
+This supply has been built and tested and does work. However, I am a hobbyist doing this to learn. You are
 welcome to follow along, but keep the experimental status in mind and always exercise caution when dealing
 with electricity!
 
@@ -55,5 +55,12 @@ The output voltage of the supply is measured by an MCP3202 ADC through a voltage
 voltage down to 0-4.096V. Further overvoltage protection is offered by the `D12` clamping diode. Current is
 measured in a similar way, but since that signal is in the 0-1V range, it is first amplified 4.096x by `U1B`.
 This signal is also clamped to the 4.096V reference through `D10`.
+
+## Issues and future improvements
+The current measuring isn't very linear and has significant drift at higher currents. This may be due to thermal
+effects in various components. This is currently compensated in software using calibration tables.
+
+Speaking of calibration, I would like some kind of automated or semi-automated calibration rather than the 
+hardcoded calibration tables. 
 
 ![schematic](assets/schematic.png)
