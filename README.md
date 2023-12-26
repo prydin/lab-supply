@@ -16,33 +16,26 @@ riddled with RF noise.
 
 ## Principle of operation
 
-NOTE: This describes an earlier version and will be updated soon!
-
 ### Analog secion
 
 32-36V AC enters the circuit at the `AC1` and `AC2` terminals and gets rectified and smoothed into approximately
 36-40V DC. This voltage is then pre-regulated down to 32V through `Q3` which is gets its voltage reference the
-backwards bias of `D9`.
+backwards bias of `D3`. This voltage is used to power the opamps. The `CNT` input is the transformer center tap, 
+which should be aroung 15V and is used to create the +12V and +5V voltages.
 
 The `U1D` opamp acts as a regulation amplifier and expects a voltage between 0-4.096V. The feedback loop is tuned
-to 7.32x amplification, resulting in an output voltage ranging from 0-30V. The Darlington pair at `Q1` acts
+to 7.32x amplification, resulting in an output voltage ranging from 0-30V. The Darlington pair at `Q3` acts
 as a current amplifier.
 
-Current regulation is based on a low-side current sensing resistor, `R6`. The voltage difference with respect to
-the internal negative rail voltage is fed to the negative input of `U1C`. The control circuitry feeds a 0-4.096V signal
-to the `V_ISET` input, which is scaled down to 0-1V through a resistor network. This voltage is then fed to the
-positive input of `U1C`. When the voltage from the current sense resistor goes above that of the positive voltage,
-the opamp starts sinking current through `D2`, bringing the base of `Q1` low until the base-emitter current is
-lowered enough to bring the current sense voltage at or below the reference on the negative input on `U1C`.
-
-The opamp `U1A` detects any current flowing through `D2` in the forward direction and uses that as an indication
-that current limiting is in effect. The output of the opamp is fed to the LED `D3` through a simple driver circuit
-based on `Q5`.
-
-An additional protection circuit is based on `Q2`. It senses the difference between the negative output and
-the internal negative rail. The voltage divider formed by `R9` and `R11` causes `Q2` to conduct once the current
-sense voltage rises above approximately 1V, which corresponds to 2A. This, in turn, will pull the positive
-input of the voltage regulating opamp `U1D` low and shut down the regulation loop.
+Current regulation is based on a high-side current sensing resistor, `R27`. The differential voltage across the 
+current sense resistor is amplified to a 0-2.5V signal using an INA225 current sense amplifier. This voltage is 
+then sent to the positivie input of `U1A`. The control circuitry feeds a 0-4.096V signal
+to the `V_ISET` input, which is scaled down to 0-2.5V through a resistor network. This voltage is then fed to the
+negative input of `U1A`. When the voltage from the current sense amplifier goes below that of the positive voltage,
+the opamp starts will source current to Q2, which brings the base on Q3 low until the current is limited to the 
+set value. `Q3` is needed since we want to keep R24 relatively low to avoid voltage drop at high output currents,
+while making sure `U1A` isn't sourcing or sinking too much current. `Q1` acts as a simple switch for turning on
+the current limit indicator LED.
 
 ### Digital section
 
