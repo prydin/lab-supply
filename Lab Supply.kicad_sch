@@ -4206,7 +4206,7 @@
     (property "Reference" "Q3" (at 196.215 69.85 90)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Value" "TIP121" (at 196.215 72.39 90)
+    (property "Value" "TIP142" (at 196.215 72.39 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Footprint" "Package_TO_SOT_THT:TO-220-3_Vertical" (at 198.12 73.66 0)
