@@ -114,7 +114,7 @@ The TIP142 output transistor requires good cooling. I opted for a simple $9 AMD 
 transistor and the 7805 regulator to it. I'm currently using isolating pads for the TIP142, but I'm not
 entirely happy with the heat transfer. I might remove that, although I'm not sure I like to have unregulated 36V
 exposed inside the case. The fan is PWM controlled using a simple temperature curve algorithm.
-![schematic](cooling/cooling.png)
+![cooling](assets/cooling.png)
 
 ### Rotary encoders and switches
 
