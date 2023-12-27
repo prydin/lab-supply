@@ -91,6 +91,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 #define OVERTEMP_LIMIT_ON 90  // Overtemp protection turns on
 #define OVERTEMP_LIMIT_OFF 80 // Overtemp protection turns off
 
+// Settings lock
+#define LOCK_PIN 1 // Settings lock
+
 // Display
 Display display;
 
@@ -121,6 +124,9 @@ uint32_t iSet = 0.0;
 // Overtemp protection
 bool overTemp = false;
 
+// Settings lock
+bool locked = false;
+
 float getTemp()
 {
   int v = analogRead(THERM_PIN);
@@ -143,6 +149,7 @@ void setup()
   pinMode(ADC_CS, OUTPUT);
   pinMode(FAN_SENSOR_PIN, INPUT_PULLUP);
   pinMode(FAN_PWM_PIN, OUTPUT);
+  pinMode(LOCK_PIN, INPUT_PULLUP);
   digitalWrite(DAC_CS, HIGH);
   digitalWrite(ADC_CS, HIGH);
   Serial.begin(115200);
@@ -168,6 +175,26 @@ void setup()
 
 void loop()
 {
+  // Settings lock enabled?
+  bool releaseLock = false;
+  if (digitalRead(LOCK_PIN) == 0)
+  {
+    if (!locked)
+    {
+      display.setLockedMode(true);
+      locked = true;
+    }
+  }
+  else
+  {
+    if (locked)
+    {
+      display.setLockedMode(false);
+      locked = false;
+      releaseLock = true;
+    }
+  }
+
   // Overtemp? Disble all dials and keep voltage and current at 0.
   if (!overTemp)
   {
@@ -179,14 +206,17 @@ void loop()
     int32_t v = voltageDial.getValue();
 
     // Dials moved?
-    if (i != iSet || v != vSet)
+    if (i != iSet || v != vSet || releaseLock)
     {
       vSet = v;
       iSet = i;
 
-      // Set voltage
-      dac.analogWrite(((uint32_t)dac.maxValue() * toCalibratedVOutput(vSet)) / MAX_MV, DAC_VOLTAGE);
-      dac.analogWrite(((uint32_t)dac.maxValue() * toCalibratedIOutput(iSet)) / MAX_MA, DAC_CURRENT);
+      // Set voltage and current
+      if (!locked)
+      {
+        dac.analogWrite(((uint32_t)dac.maxValue() * toCalibratedVOutput(vSet)) / MAX_MV, DAC_VOLTAGE);
+        dac.analogWrite(((uint32_t)dac.maxValue() * toCalibratedIOutput(iSet)) / MAX_MA, DAC_CURRENT);
+      }
     }
   }
 
@@ -197,6 +227,8 @@ void loop()
     overTemp = true;
     vSet = 0.0;
     iSet = 0.0;
+    dac.analogWrite(0, DAC_CURRENT);
+    dac.analogWrite(0, DAC_VOLTAGE);
     display.overtemp();
   }
   if (overTemp && temp < OVERTEMP_LIMIT_OFF)
@@ -212,7 +244,6 @@ void loop()
   if (!overTemp)
   {
     float amp = measAmp.getAvg(), volt = measVolt.getAvg();
-    display.setIAct(amp);
 
     // We measure in relation to negative supply. Adjust for drop across sense resistor
     float calAmp = toCalibratedIReading(amp);
