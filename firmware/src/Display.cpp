@@ -30,6 +30,24 @@ void Display::normal()
     lcd.print("FAN  ---RPM");
 }
 
+void Display::setLockedMode(bool locked)
+{
+    if (locked)
+    {
+        lcd.setCursor(10, 0);
+        lcd.print("LCK");
+        lcd.setCursor(10, 1);
+        lcd.print("LCK");
+    }
+    else
+    {
+        lcd.setCursor(10, 0);
+        lcd.print("-> ");
+        lcd.setCursor(10, 1);
+        lcd.print("-> ");
+    }
+}
+
 void Display::overtemp()
 {
     lcd.clear();
@@ -58,13 +76,13 @@ void Display::setISet(int32_t v)
     changed |= ISET_CHANGED;
 }
 
-void Display::setIAct(int32_t v)
+void Display::setIAct(int32_t i)
 {
-    if (v == iAct)
+    if (i == iAct)
     {
         return;
     }
-    iAct = v;
+    iAct = i;
     changed |= IACT_CHANGED;
 }
 

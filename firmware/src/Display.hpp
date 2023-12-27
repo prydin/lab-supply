@@ -80,6 +80,8 @@ public:
 
     void refresh();
 
+    void setLockedMode(bool locked);
+
 private:
     LiquidCrystal_I2C lcd;
     uint16_t changed = 0xffff; // Update everything on init
